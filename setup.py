@@ -12,7 +12,11 @@ data_files[base_path] = ['LICENSE',
                          'apc-nrp.php']
 
 console_scripts = ['newrelic-plugin-agent=newrelic_plugin_agent.agent:main']
-install_requires = ['helper>=2.2.2', 'requests>=2.0.0']
+publisher_entrypoints = ['file=newrelic_plugin_agent.publisher.file:FilePublisher',
+                         'newrelic=newrelic_plugin_agent.publisher.newrelic:NEWRELICPublisher',
+                         'ceilometer=newrelic_plugin_agent.publisher.ceilometer:CeilometerPublisher']
+install_requires = ['helper>=2.2.2', 'requests>=2.0.0', 'psutil>=2.0.0', 'six>=1.9.0',
+                    'stevedore>=1.4.0']
 tests_require = []
 extras_require = {'mongodb': ['pymongo'],
                   'pgbouncer': ['psycopg2'],
@@ -25,11 +29,13 @@ setup(name='newrelic_plugin_agent',
       version='1.3.0',
       description='Python based agent for collecting metrics for NewRelic',
       url='https://github.com/gmr/newrelic-plugin-agent',
-      packages=['newrelic_plugin_agent', 'newrelic_plugin_agent.plugins'],
+      packages=['newrelic_plugin_agent', 'newrelic_plugin_agent.plugins',
+                'newrelic_plugin_agent.publisher'],
       author='Gavin M. Roy',
       author_email='gavinmroy@gmail.com',
       license='BSD',
-      entry_points={'console_scripts': console_scripts},
+      entry_points={'console_scripts': console_scripts,
+                    'newrelic_plugin_agent.publisher': publisher_entrypoints},
       data_files=[(key, data_files[key]) for key in data_files.keys()],
       install_requires=install_requires,
       extras_require=extras_require,

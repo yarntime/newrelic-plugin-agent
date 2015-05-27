@@ -4,6 +4,7 @@ Host Performance Support
 """
 import datetime
 import logging
+import psutil
 
 from newrelic_plugin_agent.plugins import base
 

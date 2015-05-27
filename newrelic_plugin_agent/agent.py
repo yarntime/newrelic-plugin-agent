@@ -16,6 +16,7 @@ import time
 
 from newrelic_plugin_agent import __version__
 from newrelic_plugin_agent import plugins
+from newrelic_plugin_agent import publisher
 
 LOGGER = logging.getLogger(__name__)
 
@@ -25,10 +26,9 @@ class NewRelicPluginAgent(helper.Controller):
     every minute and reports the state to NewRelic.
 
     """
-    IGNORE_KEYS = ['license_key', 'proxy', 'endpoint',
-                   'poll_interval', 'wake_interval']
+    IGNORE_KEYS = ['interval', 'wake_interval']
+
     MAX_METRICS_PER_REQUEST = 10000
-    PLATFORM_URL = 'https://platform-api.newrelic.com/platform/v1/metrics'
     WAKE_INTERVAL = 60
 
     def __init__(self, args, operating_system):
@@ -40,7 +40,6 @@ class NewRelicPluginAgent(helper.Controller):
         """
         super(NewRelicPluginAgent, self).__init__(args, operating_system)
         self.derive_last_interval = dict()
-        self.endpoint = self.PLATFORM_URL
         self.http_headers = {'Accept': 'application/json',
                              'Content-Type': 'application/json'}
         self.last_interval_start = None
@@ -52,6 +51,9 @@ class NewRelicPluginAgent(helper.Controller):
         self.publish_queue = queue.Queue()
         self.threads = list()
         info = tuple([__version__] + list(self.system_platform))
+
+        self.publisher_mgr = publisher.base.PublisherManager(self.config)
+
         LOGGER.info('Agent v%s initialized, %s %s v%s', *info)
 
     def setup(self):
@@ -62,9 +64,6 @@ class NewRelicPluginAgent(helper.Controller):
         startup order of operations.
 
         """
-        if hasattr(self.config.application, 'endpoint'):
-            self.endpoint = self.config.application.endpoint
-        self.http_headers['X-License-Key'] = self.license_key
         self.last_interval_start = time.time()
 
     @property
@@ -77,15 +76,6 @@ class NewRelicPluginAgent(helper.Controller):
         return {'host': socket.gethostname(),
                 'pid': os.getpid(),
                 'version': __version__}
-
-    @property
-    def license_key(self):
-        """Return the NewRelic license key from the configuration values.
-
-        :rtype: str
-
-        """
-        return self.config.application.license_key
 
     def poll_plugin(self, plugin_name, plugin, config):
         """Kick off a background thread to run the processing task.
@@ -122,7 +112,7 @@ class NewRelicPluginAgent(helper.Controller):
             time.sleep(1)
 
         self.threads = list()
-        self.send_data_to_newrelic()
+        self.send_data()
         duration = time.time() - start_time
         self.next_wake_interval = self._wake_interval - duration
         if self.next_wake_interval < 1:
@@ -166,21 +156,7 @@ class NewRelicPluginAgent(helper.Controller):
 
             self.min_max_values[guid][name][metric] = min_val, max_val
 
-    @property
-    def proxies(self):
-        """Return the proxy used to access NewRelic.
-
-        :rtype: dict
-
-        """
-        if 'proxy' in self.config.application:
-            return {
-                'http': self.config.application['proxy'],
-                'https': self.config.application['proxy']
-            }
-        return None
-
-    def send_data_to_newrelic(self):
+    def send_data(self):
         metrics = 0
         components = list()
         while self.publish_queue.qsize():
@@ -219,22 +195,10 @@ class NewRelicPluginAgent(helper.Controller):
 
         LOGGER.info('Sending %i metrics to NewRelic', metrics)
         body = {'agent': self.agent_data, 'components': components}
-        LOGGER.debug(body)
-        try:
-            response = requests.post(self.endpoint,
-                                     headers=self.http_headers,
-                                     proxies=self.proxies,
-                                     data=json.dumps(body, ensure_ascii=False),
-                                     timeout=self.config.get('newrelic_api_timeout', 10),
-                                     verify=self.config.get('verify_ssl_cert',
-                                                            True))
-            LOGGER.debug('Response: %s: %r',
-                         response.status_code,
-                         response.content.strip())
-        except requests.ConnectionError as error:
-            LOGGER.error('Error reporting stats: %s', error)
-        except requests.Timeout as error:
-            LOGGER.error('TimeoutError reporting stats: %s', error)
+
+        # publish the data through publusher
+        self.publisher_mgr.publish_data(body)
+        return
 
     @staticmethod
     def _get_plugin(plugin_path):

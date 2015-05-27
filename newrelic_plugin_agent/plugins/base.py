@@ -167,8 +167,8 @@ class Plugin(object):
 
         """
         if not units:
-            return 'Component/%s' % metric
-        return 'Component/%s[%s]' % (metric, units)
+            return '%s' % metric
+        return '%s[%s]' % (metric, units)
 
     def metric_payload(self, value, min_value=None, max_value=None, count=None,
                        squares=None):
