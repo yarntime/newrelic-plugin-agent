@@ -21,4 +21,5 @@ available = {
     'redis': 'newrelic_plugin_agent.plugins.redis.Redis',
     'riak': 'newrelic_plugin_agent.plugins.riak.Riak',
     'uwsgi': 'newrelic_plugin_agent.plugins.uwsgi.uWSGI',
-    'host': 'newrelic_plugin_agent.plugins.host.Host'}
+    'host': 'newrelic_plugin_agent.plugins.host.Host',
+    'cadvisor': 'newrelic_plugin_agent.plugins.cadvisor.CAdvisor'}

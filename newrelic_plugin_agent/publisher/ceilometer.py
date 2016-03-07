@@ -119,10 +119,10 @@ class CeilometerPublisher(base.BasePublisher):
         if metrics:
             for mname,mvalue in metrics:
                 obj = {
-                    'counter_name' = mname,
-                    'counter_type' = 'gauge',
-                    'counter_unit' = 'instance',
-                    'counter_volumn' = mvalue['total']}
+                    'counter_name' : mname,
+                    'counter_type' : 'gauge',
+                    'counter_unit' : 'instance',
+                    'counter_volumn' : mvalue['total']}
                 obj.update(self.attrs)
                 obj['resource_metadata'] = self.dimensions
                 
